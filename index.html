@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ Thống Đọc Bình Luận TikTok</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary-pink: #ff4a7d;
+            --soft-pink: #fff0f3;
+            --dark-pink: #d92b5c;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --text-dark: #2c2c2c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Comfortaa', cursive, sans-serif;
+            background: linear-gradient(180deg, #ffe3e8 0%, #ffc0cb 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Tiêu đề & Đồng hồ thời gian thực */
+        .header-panel {
+            background: var(--glass-bg);
+            border-radius: 20px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 8px 24px rgba(255, 74, 125, 0.15);
+        }
+
+        .header-panel h1 {
+            font-size: 18px;
+            color: var(--dark-pink);
+            margin-bottom: 4px;
+        }
+
+        .realtime-clock {
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* Bảng điều khiển */
+        .control-panel {
+            background: var(--glass-bg);
+            border-radius: 20px;
+            padding: 16px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 8px 24px rgba(255, 74, 125, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ffe1e6;
+            border-radius: 14px;
+            font-size: 15px;
+            outline: none;
+            text-align: center;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-pink);
+            box-shadow: 0 0 10px rgba(255, 74, 125, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #ff4a7d, #ff769f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 74, 125, 0.4);
+        }
+
+        .btn-reset {
+            background: #4a5568;
+            color: white;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .status-badge {
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Khung hiển thị tin nhắn */
+        .chat-panel {
+            background: var(--glass-bg);
+            border-radius: 20px;
+            padding: 16px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 8px 24px rgba(255, 74, 125, 0.15);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-tools {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #ffe1e6;
+            padding-bottom: 8px;
+        }
+
+        .slider-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .slider-box input[type="range"] {
+            accent-color: var(--primary-pink);
+            width: 80px;
+        }
+
+        .btn-screen {
+            background: var(--soft-pink);
+            color: var(--dark-pink);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            border: 1px solid var(--primary-pink);
+            font-weight: bold;
+        }
+
+        .stream-messages {
+            flex: 1;
+            height: calc(100vh - 380px);
+            min-height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        /* Style cấu trúc từng dòng bình luận */
+        .comment-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-pink);
+            animation: slideIn 0.25s ease-out;
+        }
+
+        .comment-item img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--primary-pink);
+            object-fit: cover;
+        }
+
+        .comment-content {
+            flex: 1;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .comment-user {
+            font-weight: 700;
+            color: var(--dark-pink);
+            margin-right: 6px;
+            font-size: 0.95em;
+        }
+
+        .comment-text {
+            color: #333;
+        }
+
+        /* Chế độ Fullscreen thông minh cho Mobile */
+        body.mode-fullscreen {
+            padding: 0;
+            background: #fff0f3;
+        }
+
+        body.mode-fullscreen .app-container {
+            max-width: 100vw;
+            height: 100vh;
+            gap: 0;
+        }
+
+        body.mode-fullscreen .header-panel,
+        body.mode-fullscreen .control-panel {
+            display: none !important;
+        }
+
+        body.mode-fullscreen .chat-panel {
+            border-radius: 0;
+            border: none;
+            height: 100vh;
+        }
+
+        body.mode-fullscreen .stream-messages {
+            height: auto;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Khu vực Tiêu đề -->
+        <div class="header-panel">
+            <h1>🌸 TIKTOK CHAT READER</h1>
+            <div class="realtime-clock" id="liveTime">Đang tải...</div>
+        </div>
+
+        <!-- Khu vực Kết nối -->
+        <div class="control-panel">
+            <div class="input-group">
+                <input type="text" id="targetUser" placeholder="Nhập ID TikTok đang live..." value="chipham1">
+            </div>
+            <button class="btn btn-connect" id="actionConnect">BẮT ĐẦU ĐỌC LIVE</button>
+            <button class="btn btn-reset" id="actionReset">RESET HỆ THỐNG</button>
+            <div class="status-badge" id="statusDisplay">Trạng thái: Chờ lệnh</div>
+        </div>
+
+        <!-- Khu vực Bảng Tin Nhắn -->
+        <div class="chat-panel">
+            <div class="chat-tools">
+                <div class="slider-box">
+                    <span>Cỡ chữ:</span>
+                    <input type="range" id="sizeAdjuster" min="14" max="26" value="16">
+                    <span id="sizeDisplay">16px</span>
+                </div>
+                <button class="btn-screen" id="toggleFullscreen">PHÓNG TO</button>
+            </div>
+            
+            <div class="stream-messages" id="messageWall"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // DOM Elements
+        const liveTime = document.getElementById('liveTime');
+        const targetUser = document.getElementById('targetUser');
+        const actionConnect = document.getElementById('actionConnect');
+        const actionReset = document.getElementById('actionReset');
+        const statusDisplay = document.getElementById('statusDisplay');
+        const messageWall = document.getElementById('messageWall');
+        const sizeAdjuster = document.getElementById('sizeAdjuster');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const toggleFullscreen = document.getElementById('toggleFullscreen');
+
+        let globalFontSize = 16;
+        let wakeLockToken = null;
+
+        // Cập nhật đồng hồ hệ thống định kỳ
+        function renderClock() {
+            const date = new Date();
+            const timeString = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateString = date.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' });
+            liveTime.innerText = `${dateString} - ${timeString}`;
+        }
+        setInterval(renderClock, 1000);
+        renderClock();
+
+        // Thay đổi cỡ chữ trực tiếp toàn bộ khung chat
+        sizeAdjuster.addEventListener('input', (e) => {
+            globalFontSize = e.target.value;
+            sizeDisplay.innerText = globalFontSize + 'px';
+            document.querySelectorAll('.comment-content').forEach(el => {
+                el.style.fontSize = globalFontSize + 'px';
+            });
+        });
+
+        // Bật / Tắt chế độ xem rộng toàn màn hình ảo trên thiết bị di động
+        toggleFullscreen.addEventListener('click', () => {
+            document.body.classList.toggle('mode-fullscreen');
+            if (document.body.classList.contains('mode-fullscreen')) {
+                toggleFullscreen.innerText = "THU NHỎ";
+            } else {
+                toggleFullscreen.innerText = "PHÓNG TO";
+            }
+            messageWall.scrollTop = messageWall.scrollHeight;
+        });
+
+        // Giữ màn hình sáng liên tục tránh lock khi đang xem cmt
+        async function activateWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLockToken = await navigator.wakeLock.request('screen');
+                } catch (err) {
+                    console.warn("Chặn tự tắt màn hình thất bại:", err.message);
+                }
+            }
+        }
+
+        // Gửi tín hiệu kết nối
+        actionConnect.addEventListener('click', async () => {
+            const user = targetUser.value.trim();
+            if (!user) return alert('Vui lòng điền Username TikTok!');
+            
+            socket.emit('start-tiktok-stream', { tiktokUsername: user });
+            await activateWakeLock();
+        });
+
+        // Gửi yêu cầu buộc reset
+        actionReset.addEventListener('click', () => {
+            if (confirm('Bạn muốn xóa trạng thái luồng hiện tại?')) {
+                socket.emit('request-reset');
+                messageWall.innerHTML = '';
+            }
+        });
+
+        // Nhận cập nhật trạng thái
+        socket.on('system-status', (data) => {
+            statusDisplay.innerText = `Trạng thái: ${data.message}`;
+            if (data.status === 'connected') {
+                statusDisplay.style.color = '#2f855a';
+            } else if (data.status === 'error' || data.status === 'disconnected') {
+                statusDisplay.style.color = '#c53030';
+            } else {
+                statusDisplay.style.color = '#888';
+            }
+        });
+
+        // Nhận dữ liệu bình luận thời gian thực
+        socket.on('new-comment', (data) => {
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            
+            // Xử lý avatar fallback mặc định nếu trống
+            const avatar = data.profilePictureUrl || 'https://www.gstatic.com/images/branding/product/2x/avatar_anonymous_54x54.png';
+            
+            item.innerHTML = `
+                <img src="${avatar}" alt="avatar">
+                <div class="comment-content" style="font-size: ${globalFontSize}px">
+                    <span class="comment-user">${data.nickname} (@${data.uniqueId}):</span>
+                    <span class="comment-text">${data.comment}</span>
+                </div>
+            `;
+            
+            messageWall.appendChild(item);
+            
+            // Tự động cuộn xuống dưới cùng khi có tin nhắn mới
+            messageWall.scrollTop = messageWall.scrollHeight;
+            
+            // Giới hạn DOM không quá 150 tin nhắn tránh giật lag điện thoại
+            if (messageWall.childNodes.length > 150) {
+                messageWall.removeChild(messageWall.firstChild);
+            }
+        });
+    </script>
+</body>
+</html>
