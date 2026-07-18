@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-// Trích xuất trực tiếp class từ phiên bản cố định
 const { WebcastPushConnection } = require('tiktok-live-connector'); 
 
 const app = express();
@@ -37,7 +36,6 @@ io.on('connection', (socket) => {
         socket.emit('system-status', { status: 'connecting', message: `Đang kết nối tới: ${tiktokUsername}...` });
 
         try {
-            // Khởi tạo chuẩn theo phiên bản 1.1.2
             let tiktokConnection = new WebcastPushConnection(tiktokUsername, {
                 enableExtendedGiftInfo: true
             });
@@ -46,7 +44,14 @@ io.on('connection', (socket) => {
                 socket.emit('system-status', { status: 'connected', message: `Đã kết nối luồng Live của ${tiktokUsername}` });
                 activeConnections.set(socket.id, tiktokConnection);
             }).catch(err => {
-                socket.emit('system-status', { status: 'error', message: `Lỗi kết nối: ${err.message}. Hãy kiểm tra lại ID.` });
+                // SỬA TẠI ĐÂY: Kiểm tra lỗi an toàn tránh đọc thuộc tính undefined
+                let errorMsg = 'ID không tồn tại hoặc tài khoản hiện không livestream.';
+                if (err && err.message) {
+                    errorMsg = err.message;
+                } else if (typeof err === 'string') {
+                    errorMsg = err;
+                }
+                socket.emit('system-status', { status: 'error', message: `Lỗi kết nối: ${errorMsg}` });
             });
 
             tiktokConnection.on('chat', (data) => {
