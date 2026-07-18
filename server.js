@@ -2,8 +2,8 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-// SỬA DÒNG NÀY: Import trực tiếp toàn bộ thư viện để tránh lỗi phiên bản thay đổi cấu trúc
-const TikTokLiveConnector = require('tiktok-live-connector'); 
+// Trích xuất trực tiếp class từ phiên bản cố định
+const { WebcastPushConnection } = require('tiktok-live-connector'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -37,8 +37,8 @@ io.on('connection', (socket) => {
         socket.emit('system-status', { status: 'connecting', message: `Đang kết nối tới: ${tiktokUsername}...` });
 
         try {
-            // SỬA DÒNG NÀY: Khởi tạo thông qua đối tượng tổng cấu trúc an toàn hơn
-            let tiktokConnection = new TikTokLiveConnector.WebcastPushConnection(tiktokUsername, {
+            // Khởi tạo chuẩn theo phiên bản 1.1.2
+            let tiktokConnection = new WebcastPushConnection(tiktokUsername, {
                 enableExtendedGiftInfo: true
             });
 
