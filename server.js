@@ -2,7 +2,8 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-const { WebcastPushConnection } = require('tiktok-live-connector');
+// SỬA DÒNG NÀY: Import trực tiếp toàn bộ thư viện để tránh lỗi phiên bản thay đổi cấu trúc
+const TikTokLiveConnector = require('tiktok-live-connector'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -10,12 +11,10 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
-// Thay vì dùng express.static('public'), ta cấu hình trả về file index.html nằm cùng thư mục
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Quản lý các kết nối TikTok theo từng Socket ID
 const activeConnections = new Map();
 
 io.on('connection', (socket) => {
@@ -37,31 +36,37 @@ io.on('connection', (socket) => {
 
         socket.emit('system-status', { status: 'connecting', message: `Đang kết nối tới: ${tiktokUsername}...` });
 
-        let tiktokConnection = new WebcastPushConnection(tiktokUsername, {
-            enableExtendedGiftInfo: true
-        });
-
-        tiktokConnection.connect().then(state => {
-            socket.emit('system-status', { status: 'connected', message: `Đã kết nối luồng Live của ${tiktokUsername}` });
-            activeConnections.set(socket.id, tiktokConnection);
-        }).catch(err => {
-            socket.emit('system-status', { status: 'error', message: `Lỗi kết nối: ${err.message}. Hãy kiểm tra lại ID.` });
-        });
-
-        tiktokConnection.on('chat', (data) => {
-            socket.emit('new-comment', {
-                userId: data.userId,
-                uniqueId: data.uniqueId,
-                nickname: data.nickname,
-                comment: data.comment,
-                profilePictureUrl: data.profilePictureUrl
+        try {
+            // SỬA DÒNG NÀY: Khởi tạo thông qua đối tượng tổng cấu trúc an toàn hơn
+            let tiktokConnection = new TikTokLiveConnector.WebcastPushConnection(tiktokUsername, {
+                enableExtendedGiftInfo: true
             });
-        });
 
-        tiktokConnection.on('disconnected', () => {
-            socket.emit('system-status', { status: 'disconnected', message: 'Luồng livestream đã dừng hoặc bị ngắt.' });
-            disconnectTikTok(socket.id);
-        });
+            tiktokConnection.connect().then(state => {
+                socket.emit('system-status', { status: 'connected', message: `Đã kết nối luồng Live của ${tiktokUsername}` });
+                activeConnections.set(socket.id, tiktokConnection);
+            }).catch(err => {
+                socket.emit('system-status', { status: 'error', message: `Lỗi kết nối: ${err.message}. Hãy kiểm tra lại ID.` });
+            });
+
+            tiktokConnection.on('chat', (data) => {
+                socket.emit('new-comment', {
+                    userId: data.userId,
+                    uniqueId: data.uniqueId,
+                    nickname: data.nickname,
+                    comment: data.comment,
+                    profilePictureUrl: data.profilePictureUrl
+                });
+            });
+
+            tiktokConnection.on('disconnected', () => {
+                socket.emit('system-status', { status: 'disconnected', message: 'Luồng livestream đã dừng hoặc bị ngắt.' });
+                disconnectTikTok(socket.id);
+            });
+
+        } catch (error) {
+            socket.emit('system-status', { status: 'error', message: `Lỗi khởi tạo module: ${error.message}` });
+        }
     });
 
     socket.on('request-reset', () => {
