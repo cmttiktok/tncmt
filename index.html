@@ -41,7 +41,13 @@
             width: 100%; padding: 14px; border-radius: 12px;
             border: 1px solid #ddd; background: #f8f9fa;
             font-family: inherit; font-size: 16px; text-align: center; margin-bottom: 12px;
-            outline: none;
+            outline: none; transition: 0.2s;
+        }
+        /* Style khi ô nhập bị khóa lúc đang chạy */
+        input[type="text"]:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
         }
         
         .btn-main {
@@ -141,9 +147,10 @@
 
         <!-- Khung Điều khiển chính (Bật/Tắt đồng bộ VPS) -->
         <div class="card">
-            <input type="text" id="username" value="chipham1" placeholder="Nhập tên tài khoản TikTok Live" disabled>
+            <!-- ĐÃ MỞ KHÓA Ô NHẬP ID ĐỂ THAY ĐỔI ĐỘNG -->
+            <input type="text" id="username" value="chipham1" placeholder="Nhập tên tài khoản TikTok Live">
             <button class="btn-main" id="btnConnect">BẮT ĐẦU ĐỌC CMT</button>
-            <span class="status-text" id="status">○ Hệ thống đang tạm nghỉ. Bấm nút để kết nối VPS.</span>
+            <span class="status-text" id="status">○ Hệ thống đang tạm nghỉ. Nhập ID và bấm nút để kết nối.</span>
         </div>
 
         <!-- Khung Vùng hiển thị nội dung Chat sống -->
@@ -245,6 +252,7 @@
         function resetUI() {
             btnConnect.innerText = "BẮT ĐẦU ĐỌC CMT";
             btnConnect.className = "btn-main"; 
+            usernameInput.disabled = false; // Mở khóa ô nhập để điền ID khác
             statusText.innerText = "○ Đã ngắt kết nối an toàn với VPS. Luồng cào dừng hoàn toàn.";
             statusText.style.color = "#ffa502";
         }
@@ -252,19 +260,28 @@
         // 5. Logic Xử lý sự kiện On/Off chính (Liên kết chặt chẽ bảo vệ IP VPS)
         btnConnect.onclick = async () => {
             if (!socket || !socket.connected) {
+                const targetUser = usernameInput.value.trim();
+                if (!targetUser) {
+                    alert("Vui lòng nhập ID TikTok cần xem live!");
+                    return;
+                }
+
                 // HÀNH ĐỘNG: KÍCH HOẠT KẾT NỐI LÊN VPS
                 btnConnect.innerText = "ĐANG KẾT NỐI...";
+                usernameInput.disabled = true; // Khóa ô nhập tạm thời để tránh đổi ID khi đang chạy
+                chatBox.innerHTML = ""; // Xóa bớt cmt cũ của phòng live trước đó cho sạch
                 
-                // Cấu hình chặn Auto-reconnect ngầm
+                // Cấu hình chặn Auto-reconnect ngầm và GỬI KÈM ID lên thông qua query định danh
                 socket = io(VPS_IP, {
                     forceNew: true,
-                    reconnection: false
+                    reconnection: false,
+                    query: { tiktokId: targetUser } // Truyền ID sang file bot.js trên VPS xử lý
                 });
 
                 socket.on('connect', async () => {
                     btnConnect.innerText = "NGẮT KẾT NỐI (ĐANG LIVE)";
                     btnConnect.className = "btn-main btn-stop-mode";
-                    statusText.innerText = "● Đã kết nối thành công với VPS! Đang đợi cmt...";
+                    statusText.innerText = `● Đã kết nối thành công! Đang đợi cmt từ phòng: ${targetUser}`;
                     statusText.style.color = "#2ed573";
                     await requestWakeLock(); // Bật giữ sáng màn hình[cite: 2]
                 });
@@ -276,7 +293,8 @@
                 socket.on('connect_error', () => {
                     btnConnect.innerText = "THỬ LẠI (LỖI KẾT NỐI)";
                     btnConnect.className = "btn-main";
-                    statusText.innerText = "Lỗi: Không kết nối được VPS. Hãy kiểm tra lại file bot trên VPS!";
+                    usernameInput.disabled = false;
+                    statusText.innerText = "Lỗi: Không kết nối được VPS hoặc ID sai. Hãy kiểm tra lại file bot trên VPS!";
                     statusText.style.color = "#ff4757";
                     if(socket) {
                         socket.close();
@@ -290,7 +308,7 @@
                     msgDiv.className = 'msg';
                     msgDiv.style.fontSize = currentFontSize + 'px';
                     
-                    // Giao diện siêu sạch: Đã gỡ bỏ @username thừa ở đây theo ý bạn
+                    // Giao diện siêu sạch: Chỉ hiển thị Nickname và Comment
                     msgDiv.innerHTML = `<span class="user">${data.nickname}:</span><span class="txt">${data.comment}</span>`;
                     chatBox.appendChild(msgDiv);
                     
