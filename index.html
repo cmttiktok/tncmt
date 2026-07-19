@@ -290,8 +290,7 @@
                     msgDiv.className = 'msg';
                     msgDiv.style.fontSize = currentFontSize + 'px';
                     // Ghép định dạng hiển thị Nickname @username kèm comment sống động
-                    msgDiv.innerHTML = `<span class="user">${data.nickname} <span style="color:rgba(0,0,0,0.3); font-size:0.8rem; font-weight:normal;">@${data.username}</span>:</span><span class="txt">${data.comment}</span>`;
-                    chatBox.appendChild(msgDiv);
+                    msgDiv.innerHTML = `<span class="user">${data.nickname}:</span><span class="txt">${data.comment}</span>`;
                     
                     // Tự động cuộn khung chat bám đuôi cmt[cite: 2]
                     chatBox.scrollTop = chatBox.scrollHeight;
