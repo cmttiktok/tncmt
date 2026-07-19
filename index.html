@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TikTok Live Comments - Chi Bánh Bèo</title>
-    <!-- Nhúng thư viện Socket.IO Client -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         * {
@@ -21,20 +20,19 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding: 15px;
+            padding: 12px;
             overflow-x: hidden;
         }
 
-        /* Bố cục giao diện 1 cột thẳng, tối ưu dọc theo màn hình điện thoại */
         .app-container {
             width: 100%;
             max-width: 500px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
 
-        /* Header phong cách Glassmorphism */
+        /* Giao diện Glassmorphism */
         .header-panel {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
@@ -44,41 +42,48 @@
             padding: 15px;
             text-align: center;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
 
         .header-panel h1 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             color: #ff007f;
             text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
-            margin-bottom: 5px;
         }
 
-        .status-badge {
-            display: inline-block;
-            font-size: 0.85rem;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: rgba(255, 71, 87, 0.2);
-            color: #ff4757;
-            border: 1px solid rgba(255, 71, 87, 0.3);
+        /* Nút bấm ON/OFF tối ưu cho Mobile */
+        .control-btn {
+            width: 80%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            color: white;
         }
 
-        .status-badge.connected {
-            background: rgba(46, 213, 115, 0.2);
-            color: #2ed573;
-            border: 1px solid rgba(46, 213, 115, 0.3);
+        .btn-start {
+            background: linear-gradient(135deg, #2ed573, #26af5f);
         }
 
-        /* Khung chứa bình luận 1 cột dọc kéo dài xuống */
+        .btn-stop {
+            background: linear-gradient(135deg, #ff4757, #ff2e44);
+        }
+
         .comment-box {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 20px;
-            height: calc(100vh - 120px); /* Tự động co giãn theo chiều cao màn hình */
-            min-height: 500px;
+            height: calc(100vh - 160px); 
+            min-height: 450px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -88,56 +93,36 @@
         .comment-list {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             scroll-behavior: smooth;
         }
 
-        /* Tùy chỉnh thanh cuộn cho gọn gàng */
-        .comment-list::-webkit-scrollbar {
-            width: 4px;
-        }
-        .comment-list::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-        }
-
-        /* Giao diện từng dòng tin nhắn comment */
         .comment-item {
             background: rgba(255, 255, 255, 0.05);
             border-left: 4px solid #ff007f;
-            padding: 10px 14px;
+            padding: 10px 12px;
             border-radius: 4px 12px 12px 4px;
-            animation: fadeIn 0.3s ease forwards;
+            animation: fadeIn 0.2s ease forwards;
             word-wrap: break-word;
-        }
-
-        .comment-user {
-            font-size: 0.9rem;
-            margin-bottom: 3px;
         }
 
         .nickname {
             color: #00d2d3;
             font-weight: 600;
-        }
-
-        .username {
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 0.8rem;
-            margin-left: 4px;
+            font-size: 0.9rem;
         }
 
         .comment-text {
             color: #f5f6fa;
             font-size: 0.95rem;
-            line-height: 1.4;
+            margin-top: 2px;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
@@ -145,71 +130,81 @@
 <body>
 
     <div class="app-container">
-        <!-- Khu vực hiển thị tiêu đề và trạng thái -->
         <div class="header-panel">
             <h1>ROOM CHI BÁNH BÈO</h1>
-            <div id="status" class="status-badge">Đang kết nối server...</div>
+            <!-- Nút bấm điều khiển kết nối -->
+            <button id="toggle-btn" class="control-btn btn-start">BẮT ĐẦU ĐỌC CMT</button>
         </div>
 
-        <!-- Vùng hiển thị danh sách dòng chat đơn cột -->
         <div class="comment-box">
             <div id="comment-list" class="comment-list">
-                <!-- Tin nhắn mẫu ban đầu khi đợi luồng dữ liệu -->
-                <div class="comment-item" style="border-left-color: #2ed573;">
-                    <div class="comment-user">
-                        <span class="nickname">Hệ thống</span>
-                    </div>
-                    <div class="comment-text">Đang đợi bình luận mới từ livestream @chipham1...</div>
+                <div id="status-msg" class="comment-item" style="border-left-color: #ffa502;">
+                    <div class="comment-text" style="color: #ffa502;">Hệ thống đang tạm nghỉ. Nhấn nút phía trên khi idol lên Live nhé!</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Cấu hình IP VPS chạy Node.js của bạn
-        const VPS_IP = "http://34.126.191.224:3001"; 
+        // KIỂM TRA: Điền đúng IP và cổng (3000 hoặc 3001) bạn đang chạy trên VPS
+        const VPS_IP = "http://34.126.191.224:3000"; 
         
-        const socket = io(VPS_IP);
-        const statusBadge = document.getElementById('status');
+        let socket = null;
+        const toggleBtn = document.getElementById('toggle-btn');
         const commentList = document.getElementById('comment-list');
+        const statusMsg = document.getElementById('status-msg');
 
-        // Lắng nghe trạng thái kết nối socket
-        socket.on('connect', () => {
-            statusBadge.innerText = "● Đã kết nối dữ liệu";
-            statusBadge.classList.add('connected');
-        });
+        toggleBtn.addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                // HÀNH ĐỘNG: BẬT KẾT NỐI
+                toggleBtn.innerText = "ĐANG KẾT NỐI...";
+                
+                socket = io(VPS_IP, { forceNew: true });
 
-        socket.on('disconnect', () => {
-            statusBadge.innerText = "Mất kết nối server";
-            statusBadge.classList.remove('connected');
-        });
+                socket.on('connect', () => {
+                    toggleBtn.innerText = "NGẮT KẾT NỐI (ĐANG LIVE)";
+                    toggleBtn.className = "control-btn btn-stop";
+                    statusMsg.innerHTML = `<div class="comment-text" style="color: #2ed573;">● Đã kết nối thành công với VPS! Đang đợi cmt...</div>`;
+                });
 
-        // Nhận event 'new_comment' từ VPS đẩy về
-        socket.on('new_comment', (data) => {
-            const commentItem = document.createElement('div');
-            commentItem.className = 'comment-item';
+                socket.on('disconnect', () => {
+                    resetUI();
+                });
 
-            // Xử lý giới hạn emoji (nếu có chuỗi chat quá dài hoặc spam, bạn có thể custom thêm)
-            commentItem.innerHTML = `
-                <div class="comment-user">
-                    <span class="nickname">${data.nickname}</span>
-                    <span class="username">@${data.username}</span>
-                </div>
-                <div class="comment-text">${data.comment}</div>
-            `;
+                socket.on('connect_error', () => {
+                    toggleBtn.innerText = "THỬ LẠI (LỖI KẾT NỐI)";
+                    toggleBtn.className = "control-btn btn-start";
+                    statusMsg.innerHTML = `<div class="comment-text" style="color: #ff4757;">Lỗi: Không thể kết nối tới VPS. Hãy kiểm tra lại port hoặc cài đặt trình duyệt!</div>`;
+                });
 
-            // Append vào danh sách hiển thị
-            commentList.appendChild(commentItem);
+                // Nhận bình luận mới
+                socket.on('new_comment', (data) => {
+                    const commentItem = document.createElement('div');
+                    commentItem.className = 'comment-item';
+                    commentItem.innerHTML = `
+                        <div class="nickname">${data.nickname} <span style="color:rgba(255,255,255,0.3); font-size:0.8rem;">@${data.username}</span></div>
+                        <div class="comment-text">${data.comment}</div>
+                    `;
+                    commentList.appendChild(commentItem);
+                    commentList.scrollTop = commentList.scrollHeight;
 
-            // Tự động cuộn xuống dưới cùng để bám theo luồng chat mới nhất
-            commentList.scrollTop = commentList.scrollHeight;
+                    // Giới hạn 40 dòng trên mobile cho nhẹ máy
+                    const currentItems = commentList.getElementsByClassName('comment-item');
+                    if (currentItems.length > 40) currentItems[0].remove();
+                });
 
-            // Giới hạn màn hình điện thoại chỉ chứa tối đa 40 dòng chat để tránh tràn ram/lag trình duyệt
-            const currentItems = commentList.getElementsByClassName('comment-item');
-            if (currentItems.length > 40) {
-                currentItems[0].remove();
+            } else {
+                // HÀNH ĐỘNG: TẮT KẾT NỐI
+                socket.disconnect();
+                resetUI();
             }
         });
+
+        function resetUI() {
+            toggleBtn.innerText = "BẮT ĐẦU ĐỌC CMT";
+            toggleBtn.className = "control-btn btn-start";
+            statusMsg.innerHTML = `<div class="comment-text" style="color: #ffa502;">Đã ngắt kết nối an toàn. VPS đã dừng quét phòng Live.</div>`;
+        }
     </script>
 </body>
 </html>
