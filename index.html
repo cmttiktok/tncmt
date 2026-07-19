@@ -2,163 +2,212 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Xem Bình Luận Live</title>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&display=swap" rel="stylesheet">
-    <script src="/socket.io/socket.io.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live Comments - Chi Bánh Bèo</title>
+    <!-- Nhúng thư viện Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        :root {
-            --primary-pink: #ff4a7d;
-            --soft-pink: #fff0f3;
-            --dark-pink: #d92b5c;
-            --glass-bg: rgba(255, 255, 255, 0.9);
-            --text-dark: #2c2c2c;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: 'Comfortaa', cursive, sans-serif;
-            background: linear-gradient(180deg, #ffe3e8 0%, #ffc0cb 100%);
-            min-height: 100vh; display: flex; justify-content: center; padding: 10px;
-        }
-        .app-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
-        .header-panel {
-            background: var(--glass-bg); border-radius: 20px; padding: 15px; text-align: center;
-            border: 2px solid #ffffff; box-shadow: 0 8px 24px rgba(255, 74, 125, 0.15);
-        }
-        .header-panel h1 { font-size: 18px; color: var(--dark-pink); margin-bottom: 4px; }
-        .realtime-clock { font-size: 14px; color: #666; font-weight: bold; }
-        
-        /* Thanh trạng thái mạng trực quan */
-        .status-bar {
-            margin-top: 10px; padding: 6px; border-radius: 10px; font-size: 12px; 
-            font-weight: bold; background: #ffe5ec; color: #ff4a7d; 
-            transition: all 0.3s ease; text-align: center;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        .chat-panel {
-            background: var(--glass-bg); border-radius: 20px; padding: 16px;
-            border: 2px solid #ffffff; box-shadow: 0 8px 24px rgba(255, 74, 125, 0.15);
-            flex: 1; display: flex; flex-direction: column; gap: 10px;
+        body {
+            background: linear-gradient(135deg, #0f0c20, #15102a);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 15px;
+            overflow-x: hidden;
         }
-        .chat-tools { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #ffe1e6; padding-bottom: 8px; }
-        .slider-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: bold; }
-        .slider-box input[type="range"] { accent-color: var(--primary-pink); width: 80px; }
-        .btn-screen { background: var(--soft-pink); color: var(--dark-pink); padding: 6px 12px; border-radius: 8px; font-size: 11px; border: 1px solid var(--primary-pink); font-weight: bold; cursor: pointer; }
-        .stream-messages { flex: 1; height: calc(100vh - 220px); min-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+
+        /* Bố cục giao diện 1 cột thẳng, tối ưu dọc theo màn hình điện thoại */
+        .app-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Header phong cách Glassmorphism */
+        .header-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .header-panel h1 {
+            font-size: 1.4rem;
+            color: #ff007f;
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 0.85rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.connected {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+
+        /* Khung chứa bình luận 1 cột dọc kéo dài xuống */
+        .comment-box {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            height: calc(100vh - 120px); /* Tự động co giãn theo chiều cao màn hình */
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .comment-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+        }
+
+        /* Tùy chỉnh thanh cuộn cho gọn gàng */
+        .comment-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .comment-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        /* Giao diện từng dòng tin nhắn comment */
         .comment-item {
-            display: flex; align-items: flex-start; gap: 8px; background: rgba(255, 255, 255, 0.6);
-            padding: 8px 12px; border-radius: 12px; border-left: 4px solid var(--primary-pink); animation: slideIn 0.25s ease-out;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid #ff007f;
+            padding: 10px 14px;
+            border-radius: 4px 12px 12px 4px;
+            animation: fadeIn 0.3s ease forwards;
+            word-wrap: break-word;
         }
-        .comment-item img { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--primary-pink); object-fit: cover; }
-        .comment-content { flex: 1; word-break: break-word; line-height: 1.4; }
-        .comment-user { font-weight: 700; color: var(--dark-pink); margin-right: 6px; font-size: 0.95em; }
-        .comment-text { color: #333; }
-        
-        body.mode-fullscreen { padding: 0; background: #fff0f3; }
-        body.mode-fullscreen .app-container { max-width: 100vw; height: 100vh; gap: 0; }
-        body.mode-fullscreen .header-panel { display: none !important; }
-        body.mode-fullscreen .chat-panel { border-radius: 0; border: none; height: 100vh; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        .comment-user {
+            font-size: 0.9rem;
+            margin-bottom: 3px;
+        }
+
+        .nickname {
+            color: #00d2d3;
+            font-weight: 600;
+        }
+
+        .username {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            margin-left: 4px;
+        }
+
+        .comment-text {
+            color: #f5f6fa;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
+
     <div class="app-container">
+        <!-- Khu vực hiển thị tiêu đề và trạng thái -->
         <div class="header-panel">
-            <h1>🌸 BÈO LIVE COMMENTS</h1>
-            <div class="realtime-clock" id="liveTime">Đang tải...</div>
-            <div class="status-bar" id="connectionStatus">🔄 Đang kết nối máy chủ Render...</div>
+            <h1>ROOM CHI BÁNH BÈO</h1>
+            <div id="status" class="status-badge">Đang kết nối server...</div>
         </div>
-        <div class="chat-panel">
-            <div class="chat-tools">
-                <div class="slider-box">
-                    <span>Cỡ chữ:</span>
-                    <input type="range" id="sizeAdjuster" min="14" max="26" value="16">
-                    <span id="sizeDisplay">16px</span>
+
+        <!-- Vùng hiển thị danh sách dòng chat đơn cột -->
+        <div class="comment-box">
+            <div id="comment-list" class="comment-list">
+                <!-- Tin nhắn mẫu ban đầu khi đợi luồng dữ liệu -->
+                <div class="comment-item" style="border-left-color: #2ed573;">
+                    <div class="comment-user">
+                        <span class="nickname">Hệ thống</span>
+                    </div>
+                    <div class="comment-text">Đang đợi bình luận mới từ livestream @chipham1...</div>
                 </div>
-                <button class="btn-screen" id="toggleFullscreen">PHÓNG TO</button>
             </div>
-            <div class="stream-messages" id="messageWall"></div>
         </div>
     </div>
+
     <script>
-        const socket = io();
-        const liveTime = document.getElementById('liveTime');
-        const messageWall = document.getElementById('messageWall');
-        const sizeAdjuster = document.getElementById('sizeAdjuster');
-        const sizeDisplay = document.getElementById('sizeDisplay');
-        const toggleFullscreen = document.getElementById('toggleFullscreen');
-        const statusEl = document.getElementById('connectionStatus');
-        let globalFontSize = 16;
-        let wakeLockToken = null;
+        // Cấu hình IP VPS chạy Node.js của bạn
+        const VPS_IP = "http://34.126.191.224:3000"; 
+        
+        const socket = io(VPS_IP);
+        const statusBadge = document.getElementById('status');
+        const commentList = document.getElementById('comment-list');
 
-        // Xử lý hiển thị đồng hồ thời gian thực
-        function renderClock() {
-            const date = new Date();
-            liveTime.innerText = date.toLocaleString('vi-VN');
-        }
-        setInterval(renderClock, 1000);
-
-        // Theo dõi trạng thái kết nối Socket.io kết nối tới hệ thống
+        // Lắng nghe trạng thái kết nối socket
         socket.on('connect', () => {
-            statusEl.innerText = "🟢 Hệ thống Ổn Định - Sẵn sàng nhận bình luận";
-            statusEl.style.background = "#d4edda";
-            statusEl.style.color = "#155724";
+            statusBadge.innerText = "● Đã kết nối dữ liệu";
+            statusBadge.classList.add('connected');
         });
 
         socket.on('disconnect', () => {
-            statusEl.innerText = "🔴 Mất kết nối tới Render! Đang tự động kết nối lại...";
-            statusEl.style.background = "#f8d7da";
-            statusEl.style.color = "#721c24";
+            statusBadge.innerText = "Mất kết nối server";
+            statusBadge.classList.remove('connected');
         });
 
-        // Thay đổi kích thước chữ động bằng thanh kéo chỉ với 1 cột thẳng
-        sizeAdjuster.addEventListener('input', (e) => {
-            globalFontSize = e.target.value;
-            sizeDisplay.innerText = globalFontSize + 'px';
-            document.querySelectorAll('.comment-text, .comment-user').forEach(el => el.style.fontSize = globalFontSize + 'px');
-        });
+        // Nhận event 'new_comment' từ VPS đẩy về
+        socket.on('new_comment', (data) => {
+            const commentItem = document.createElement('div');
+            commentItem.className = 'comment-item';
 
-        // Chuyển đổi chế độ xem phóng to toàn màn hình điện thoại
-        toggleFullscreen.addEventListener('click', () => {
-            document.body.classList.toggle('mode-fullscreen');
-            toggleFullscreen.innerText = document.body.classList.contains('mode-fullscreen') ? "THU NHỎ" : "PHÓNG TO";
-            messageWall.scrollTop = messageWall.scrollHeight;
-        });
-
-        // Kích hoạt tính năng giữ màn hình điện thoại luôn sáng liên tục (WakeLock)
-        async function activateWakeLock() {
-            if ('wakeLock' in navigator) { 
-                try { 
-                    wakeLockToken = await navigator.wakeLock.request('screen'); 
-                } catch (err) {
-                    console.log("Thiết bị không hỗ trợ hoặc từ chối WakeLock.");
-                } 
-            }
-        }
-        activateWakeLock();
-
-        // Lắng nghe sự kiện nhận bình luận mới từ Bot VPS truyền qua Render xuống giao diện
-        socket.on('new-comment', (data) => {
-            const item = document.createElement('div');
-            item.className = 'comment-item';
-            
-            // Nếu không lấy được avatar từ luồng, sử dụng ảnh ẩn danh mặc định bảo mật
-            const avatar = data.profilePictureUrl || 'https://www.gstatic.com/images/branding/product/2x/avatar_anonymous_54x54.png';
-            
-            item.innerHTML = `
-                <img src="${avatar}">
-                <div class="comment-content">
-                    <span class="comment-user" style="font-size: ${globalFontSize}px">${data.nickname}:</span>
-                    <span class="comment-text" style="font-size: ${globalFontSize}px">${data.comment}</span>
+            // Xử lý giới hạn emoji (nếu có chuỗi chat quá dài hoặc spam, bạn có thể custom thêm)
+            commentItem.innerHTML = `
+                <div class="comment-user">
+                    <span class="nickname">${data.nickname}</span>
+                    <span class="username">@${data.username}</span>
                 </div>
+                <div class="comment-text">${data.comment}</div>
             `;
-            
-            messageWall.appendChild(item);
-            messageWall.scrollTop = messageWall.scrollHeight; // Luôn tự động cuộn xuống dưới cùng khi có chat mới
-            
-            // Giới hạn 150 dòng tin nhắn trên màn hình để tránh quá tải RAM gây đơ trình duyệt điện thoại
-            if (messageWall.childNodes.length > 150) {
-                messageWall.removeChild(messageWall.firstChild);
+
+            // Append vào danh sách hiển thị
+            commentList.appendChild(commentItem);
+
+            // Tự động cuộn xuống dưới cùng để bám theo luồng chat mới nhất
+            commentList.scrollTop = commentList.scrollHeight;
+
+            // Giới hạn màn hình điện thoại chỉ chứa tối đa 40 dòng chat để tránh tràn ram/lag trình duyệt
+            const currentItems = commentList.getElementsByClassName('comment-item');
+            if (currentItems.length > 40) {
+                currentItems[0].remove();
             }
         });
     </script>
