@@ -9,19 +9,20 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
-// Cho phép nhận dữ liệu JSON từ Bot VPS gửi lên
+// Cho phép server đọc hiểu dữ liệu dạng JSON gửi lên từ Bot VPS
 app.use(express.json());
 
+// Trả về giao diện khi truy cập link Render công khai
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Endpoint xử lý tiếp nhận comment từ Bot ngầm gửi về
+// Đường dẫn (Endpoint) tiếp nhận comment từ VPS gửi về
 app.post('/api/stream-comment', (req, res) => {
     const { uniqueId, nickname, comment, profilePictureUrl } = req.body;
     
     if (comment) {
-        // Bắn trực tiếp dữ liệu xuống giao diện trang màu hồng qua Socket.io
+        // Bắn trực tiếp dữ liệu comment xuống màn hình điện thoại qua Socket.io
         io.emit('new-comment', {
             uniqueId: uniqueId || 'Ẩn danh',
             nickname: nickname || 'Người dùng',
