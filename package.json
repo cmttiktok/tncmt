@@ -1,14 +1,13 @@
 {
   "name": "tiktok-live-chat-reader",
   "version": "1.0.0",
-  "description": "Hệ thống đọc comment TikTok Live tối ưu cho Mobile",
+  "description": "Hệ thống nhận comment từ VPS và hiển thị tối ưu cho Mobile",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "socket.io": "^4.7.5",
-    "tiktok-live-connector": "1.1.2"
+    "socket.io": "^4.7.5"
   }
 }
