@@ -30,29 +30,35 @@ io.on('connection', (socket) => {
         }
     };
 
-    socket.on('start-tiktok-stream', ({ tiktokUsername }) => {
+    // Chuyển hẳn sang cơ chế async/await để bắt được mọi lỗi bất đồng bộ từ lõi thư viện
+    socket.on('start-tiktok-stream', async ({ tiktokUsername }) => {
         disconnectTikTok(socket.id);
 
         socket.emit('system-status', { status: 'connecting', message: `Đang kết nối tới: ${tiktokUsername}...` });
 
         try {
             let tiktokConnection = new WebcastPushConnection(tiktokUsername, {
-                enableExtendedGiftInfo: true
+                enableExtendedGiftInfo: true,
+                requestOptions: {
+                    timeout: 10000 // Giới hạn thời gian phản hồi tránh treo luồng
+                }
             });
 
-            tiktokConnection.connect().then(state => {
-                socket.emit('system-status', { status: 'connected', message: `Đã kết nối luồng Live của ${tiktokUsername}` });
-                activeConnections.set(socket.id, tiktokConnection);
-            }).catch(err => {
-                // SỬA TẠI ĐÂY: Kiểm tra lỗi an toàn tránh đọc thuộc tính undefined
-                let errorMsg = 'ID không tồn tại hoặc tài khoản hiện không livestream.';
-                if (err && err.message) {
-                    errorMsg = err.message;
-                } else if (typeof err === 'string') {
-                    errorMsg = err;
-                }
-                socket.emit('system-status', { status: 'error', message: `Lỗi kết nối: ${errorMsg}` });
+            // Bắt sự kiện lỗi trực tiếp từ instance trước khi thực hiện connect
+            tiktokConnection.on('error', (err) => {
+                console.error('Lỗi phát sinh từ luồng TikTok:', err);
+                socket.emit('system-status', { 
+                    status: 'error', 
+                    message: `Luồng Live gặp lỗi: ${err?.message || 'Mất kết nối đột ngột'}` 
+                });
             });
+
+            // Tiến hành kết nối bất đồng bộ một cách an toàn
+            await tiktokConnection.connect();
+            
+            // Nếu chạy đến đây tức là đã kết nối thành công
+            socket.emit('system-status', { status: 'connected', message: `Đã kết nối luồng Live của ${tiktokUsername}` });
+            activeConnections.set(socket.id, tiktokConnection);
 
             tiktokConnection.on('chat', (data) => {
                 socket.emit('new-comment', {
@@ -70,7 +76,18 @@ io.on('connection', (socket) => {
             });
 
         } catch (error) {
-            socket.emit('system-status', { status: 'error', message: `Lỗi khởi tạo module: ${error.message}` });
+            // Bắt toàn bộ lỗi "reading status" hoặc lỗi từ server TikTok tại đây
+            console.error('Bắt được ngoại lệ kết nối:', error);
+            
+            let friendlyMessage = 'ID không tồn tại, tài khoản không Live hoặc IP Server bị TikTok chặn tạm thời.';
+            if (error && error.message) {
+                friendlyMessage = error.message;
+            }
+            
+            socket.emit('system-status', { 
+                status: 'error', 
+                message: `Lỗi kết nối: ${friendlyMessage}` 
+            });
         }
     });
 
