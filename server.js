@@ -9,22 +9,22 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
-// Cấu hình để nhận dữ liệu dạng JSON từ Script gửi về
+// Cho phép nhận dữ liệu JSON từ Bot VPS gửi lên
 app.use(express.json());
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Endpoint tiếp nhận comment từ điện thoại phụ gửi lên
+// Endpoint xử lý tiếp nhận comment từ Bot ngầm gửi về
 app.post('/api/stream-comment', (req, res) => {
     const { uniqueId, nickname, comment, profilePictureUrl } = req.body;
     
     if (comment) {
-        // Phát dữ liệu comment tới tất cả màn hình giao diện hồng đang mở
+        // Bắn trực tiếp dữ liệu xuống giao diện trang màu hồng qua Socket.io
         io.emit('new-comment', {
             uniqueId: uniqueId || 'Ẩn danh',
-            nickname: nickname || 'Người dùng TikTok',
+            nickname: nickname || 'Người dùng',
             comment: comment,
             profilePictureUrl: profilePictureUrl || ''
         });
