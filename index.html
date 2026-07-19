@@ -2,169 +2,196 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Live Comments - Chi Bánh Bèo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Room Chi Bánh Bèo - TikTok Live Comment</title>
+    <!-- Nhúng thư viện Socket.IO Client -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
             background: linear-gradient(135deg, #0f0c20, #15102a);
-            color: #fff;
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
-            padding: 12px;
-            overflow-x: hidden;
+            align-items: center;
+            padding: 15px;
+            overflow: hidden;
         }
 
-        .app-container {
+        /* Giao diện Glassmorphic tối ưu 1 cột cho Mobile */
+        .container {
             width: 100%;
             max-width: 500px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
+            height: 90vh;
         }
 
-        /* Giao diện Glassmorphism */
         .header-panel {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
             padding: 15px;
             text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .header-panel h1 {
-            font-size: 1.3rem;
+        h2 {
             color: #ff007f;
-            text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+            font-size: 1.3rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
         }
 
-        /* Nút bấm ON/OFF tối ưu cho Mobile */
+        /* Thiết kế nút bấm */
         .control-btn {
-            width: 80%;
-            padding: 12px;
+            width: 100%;
+            padding: 12px 20px;
             font-size: 1rem;
             font-weight: bold;
             border: none;
             border-radius: 25px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         .btn-start {
-            background: linear-gradient(135deg, #2ed573, #26af5f);
+            background: linear-gradient(135deg, #2ed573, #26af58);
         }
 
         .btn-stop {
-            background: linear-gradient(135deg, #ff4757, #ff2e44);
+            background: linear-gradient(135deg, #ff4757, #ff2a3b);
+        }
+
+        /* Khu vực hiển thị Trạng thái & Comments */
+        .status-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid #ffa502;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
         }
 
         .comment-box {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            height: calc(100vh - 160px); 
-            min-height: 450px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-        }
-
-        .comment-list {
             flex: 1;
-            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 15px;
             padding: 12px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.04);
             display: flex;
             flex-direction: column;
             gap: 10px;
             scroll-behavior: smooth;
         }
 
+        /* Định dạng từng dòng Comment */
         .comment-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-left: 4px solid #ff007f;
+            background: rgba(255, 255, 255, 0.04);
             padding: 10px 12px;
-            border-radius: 4px 12px 12px 4px;
-            animation: fadeIn 0.2s ease forwards;
-            word-wrap: break-word;
+            border-radius: 10px;
+            border-left: 3px solid #ff007f;
+            animation: fadeIn 0.3s ease;
         }
 
         .nickname {
+            font-weight: bold;
             color: #00d2d3;
-            font-weight: 600;
             font-size: 0.9rem;
+            margin-bottom: 3px;
         }
 
         .comment-text {
             color: #f5f6fa;
             font-size: 0.95rem;
-            margin-top: 2px;
+            line-height: 1.4;
+            word-break: break-word;
         }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Tối ưu thanh cuộn mượt mà */
+        .comment-box::-webkit-scrollbar {
+            width: 5px;
+        }
+        .comment-box::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="container">
         <div class="header-panel">
-            <h1>ROOM CHI BÁNH BÈO</h1>
-            <!-- Nút bấm điều khiển kết nối -->
-            <button id="toggle-btn" class="control-btn btn-start">BẮT ĐẦU ĐỌC CMT</button>
+            <h2>ROOM CHI BÁNH BÈO</h2>
+            <button id="toggleBtn" class="control-btn btn-start">BẮT ĐẦU ĐỌC CMT</button>
         </div>
 
-        <div class="comment-box">
-            <div id="comment-list" class="comment-list">
-                <div id="status-msg" class="comment-item" style="border-left-color: #ffa502;">
-                    <div class="comment-text" style="color: #ffa502;">Hệ thống đang tạm nghỉ. Nhấn nút phía trên khi idol lên Live nhé!</div>
-                </div>
-            </div>
+        <div class="status-container" id="statusMsg">
+            <div class="comment-text" style="color: #ffa502;">○ Hệ thống đang tạm nghỉ. Bấm nút để kết nối VPS.</div>
+        </div>
+
+        <div class="comment-box" id="commentList">
+            <!-- Comment mới sẽ tự động đẩy vào đây -->
         </div>
     </div>
 
     <script>
-        // KIỂM TRA: Điền đúng IP và cổng (3000 hoặc 3001) bạn đang chạy trên VPS
-        const VPS_IP = "http://34.126.191.224:3001"; 
+        // CẤU HÌNH IP VPS ĐÚNG PORT 3001
+        const VPS_IP = "http://34.126.191.224:3001";
         
         let socket = null;
-        const toggleBtn = document.getElementById('toggle-btn');
-        const commentList = document.getElementById('comment-list');
-        const statusMsg = document.getElementById('status-msg');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const commentList = document.getElementById('commentList');
+
+        // Hàm đặt lại trạng thái giao diện nguyên bản
+        function resetUI() {
+            toggleBtn.innerText = "BẮT ĐẦU ĐỌC CMT";
+            toggleBtn.className = "control-btn btn-start";
+            statusMsg.innerHTML = `<div class="comment-text" style="color: #ffa502;">○ Đã ngắt kết nối an toàn với VPS. Luồng cào dừng hoàn toàn.</div>`;
+            statusMsg.parentElement.style.borderLeftColor = "#ffa502";
+        }
 
         toggleBtn.addEventListener('click', () => {
             if (!socket || !socket.connected) {
                 // HÀNH ĐỘNG: BẬT KẾT NỐI
                 toggleBtn.innerText = "ĐANG KẾT NỐI...";
                 
-                socket = io(VPS_IP, { forceNew: true });
+                // QUAN TRỌNG: Thiết lập reconnection: false để chặn triệt để trình duyệt tự kết nối lại ngầm khi tắt
+                socket = io(VPS_IP, {
+                    forceNew: true,
+                    reconnection: false
+                });
 
                 socket.on('connect', () => {
                     toggleBtn.innerText = "NGẮT KẾT NỐI (ĐANG LIVE)";
                     toggleBtn.className = "control-btn btn-stop";
                     statusMsg.innerHTML = `<div class="comment-text" style="color: #2ed573;">● Đã kết nối thành công với VPS! Đang đợi cmt...</div>`;
+                    statusMsg.parentElement.style.borderLeftColor = "#2ed573";
                 });
 
                 socket.on('disconnect', () => {
@@ -174,37 +201,42 @@
                 socket.on('connect_error', () => {
                     toggleBtn.innerText = "THỬ LẠI (LỖI KẾT NỐI)";
                     toggleBtn.className = "control-btn btn-start";
-                    statusMsg.innerHTML = `<div class="comment-text" style="color: #ff4757;">Lỗi: Không thể kết nối tới VPS. Hãy kiểm tra lại port hoặc cài đặt trình duyệt!</div>`;
+                    statusMsg.innerHTML = `<div class="comment-text" style="color: #ff4757;">Lỗi: Không kết nối được VPS. Hãy kiểm tra xem file bot.js trên VPS đang chạy không nhé!</div>`;
+                    statusMsg.parentElement.style.borderLeftColor = "#ff4757";
+                    if(socket) {
+                        socket.close();
+                        socket = null;
+                    }
                 });
 
-                // Nhận bình luận mới
+                // Nhận bình luận đổ về từ VPS
                 socket.on('new_comment', (data) => {
                     const commentItem = document.createElement('div');
                     commentItem.className = 'comment-item';
                     commentItem.innerHTML = `
-                        <div class="nickname">${data.nickname} <span style="color:rgba(255,255,255,0.3); font-size:0.8rem;">@${data.username}</span></div>
+                        <div class="nickname">${data.nickname} <span style="color:rgba(255,255,255,0.25); font-size:0.8rem; font-weight:normal;">@${data.username}</span></div>
                         <div class="comment-text">${data.comment}</div>
                     `;
                     commentList.appendChild(commentItem);
+                    
+                    // Tự động cuộn xuống dưới cùng để bám theo luồng chat sống
                     commentList.scrollTop = commentList.scrollHeight;
 
-                    // Giới hạn 40 dòng trên mobile cho nhẹ máy
+                    // Giới hạn lưu tối đa 50 dòng trên giao diện điện thoại để tránh nặng máy
                     const currentItems = commentList.getElementsByClassName('comment-item');
-                    if (currentItems.length > 40) currentItems[0].remove();
+                    if (currentItems.length > 50) {
+                        currentItems[0].remove();
+                    }
                 });
 
             } else {
-                // HÀNH ĐỘNG: TẮT KẾT NỐI
-                socket.disconnect();
+                // HÀNH ĐỘNG: CHỦ ĐỘNG NGẮT KẾT NỐI
+                statusMsg.innerHTML = `<div class="comment-text" style="color: #ffa502;">Đang gửi lệnh ngắt luồng tới VPS...</div>`;
+                socket.close(); // Hủy liên kết socket hoàn toàn ngay lập tức
+                socket = null;  // Giải phóng biến lưu trữ để ngắt triệt để
                 resetUI();
             }
         });
-
-        function resetUI() {
-            toggleBtn.innerText = "BẮT ĐẦU ĐỌC CMT";
-            toggleBtn.className = "control-btn btn-start";
-            statusMsg.innerHTML = `<div class="comment-text" style="color: #ffa502;">Đã ngắt kết nối an toàn. VPS đã dừng quét phòng Live.</div>`;
-        }
     </script>
 </body>
 </html>
