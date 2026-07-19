@@ -289,8 +289,10 @@
                     const msgDiv = document.createElement('div');
                     msgDiv.className = 'msg';
                     msgDiv.style.fontSize = currentFontSize + 'px';
-                    // Ghép định dạng hiển thị Nickname @username kèm comment sống động
+                    
+                    // Giao diện siêu sạch: Đã gỡ bỏ @username thừa ở đây theo ý bạn
                     msgDiv.innerHTML = `<span class="user">${data.nickname}:</span><span class="txt">${data.comment}</span>`;
+                    chatBox.appendChild(msgDiv);
                     
                     // Tự động cuộn khung chat bám đuôi cmt[cite: 2]
                     chatBox.scrollTop = chatBox.scrollHeight;
