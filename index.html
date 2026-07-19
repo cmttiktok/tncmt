@@ -99,6 +99,7 @@
             messageWall.scrollTop = messageWall.scrollHeight;
         });
 
+        // Kích hoạt giữ sáng màn hình điện thoại liên tục khi mở giao diện
         async function activateWakeLock() {
             if ('wakeLock' in navigator) { try { wakeLockToken = await navigator.wakeLock.request('screen'); } catch (err) {} }
         }
@@ -107,16 +108,19 @@
         socket.on('new-comment', (data) => {
             const item = document.createElement('div');
             item.className = 'comment-item';
+            // Dùng ảnh mặc định nếu tài khoản người dùng ẩn avatar công khai
             const avatar = data.profilePictureUrl || 'https://www.gstatic.com/images/branding/product/2x/avatar_anonymous_54x54.png';
             item.innerHTML = `
                 <img src="${avatar}">
                 <div class="comment-content" style="font-size: ${globalFontSize}px">
-                    <span class="comment-user">${data.nickname} (@${data.uniqueId}):</span>
+                    <span class="comment-user">${data.nickname}:</span>
                     <span class="comment-text">${data.comment}</span>
                 </div>
             `;
             messageWall.appendChild(item);
             messageWall.scrollTop = messageWall.scrollHeight;
+            
+            // Giới hạn hiển thị 150 comment trên màn hình để tránh giật lag điện thoại
             if (messageWall.childNodes.length > 150) messageWall.removeChild(messageWall.firstChild);
         });
     </script>
